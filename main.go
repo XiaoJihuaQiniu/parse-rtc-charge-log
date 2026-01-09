@@ -236,6 +236,7 @@ func showResult() {
 	fmt.Printf("########## total durations: %ds, %dm, %.2fh\n", totalDuration, totalDuration/60, float64(totalDuration)/3600)
 
 	fmt.Printf("\n########## appid: %s, type: video, size: HD, durations\n", appid)
+	totalDuration = 0
 	for date, duration := range mapDataDurationsVidHd {
 		fmt.Printf("%s: %ds, %dm, %.2fh\n", date, duration, duration/60, float64(duration)/3600)
 		totalDuration += duration
@@ -243,6 +244,7 @@ func showResult() {
 	fmt.Printf("########## total durations: %ds, %dm, %.2fh\n", totalDuration, totalDuration/60, float64(totalDuration)/3600)
 
 	fmt.Printf("\n########## appid: %s, type: video, size: UHD, durations\n", appid)
+	totalDuration = 0
 	for date, duration := range mapDataDurationsVidUhd {
 		fmt.Printf("%s: %ds, %dm, %.2fh\n", date, duration, duration/60, float64(duration)/3600)
 		totalDuration += duration
@@ -265,38 +267,54 @@ func showResult() {
 		return sorted
 	}
 
-	fmt.Printf("\n########## appid: %s, type: audio, rooms\n", appid)
+	fmt.Printf("\n--------------------------------------------------------------------\n")
+	fmt.Printf("########## appid: %s, type: audio, rooms\n", appid)
 	for date, rooms := range mapDataRoomsAudio {
 		fmt.Printf("\n########## data: %s, appid: %s, type: audio, rooms: %d\n", date, appid, len(rooms))
 		sorted := sortRoom(rooms)
 		for _, item := range sorted {
+			if item.Value < 36 {
+				continue
+			}
 			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
 		}
 	}
 
-	fmt.Printf("\n########## appid: %s, type: video, size: SD, rooms\n", appid)
+	fmt.Printf("\n--------------------------------------------------------------------\n")
+	fmt.Printf("########## appid: %s, type: video, size: SD, rooms\n", appid)
 	for date, rooms := range mapDataRoomsVidSd {
 		fmt.Printf("\n########## data: %s, appid: %s, type: video, size: SD, rooms: %d\n", date, appid, len(rooms))
 		sorted := sortRoom(rooms)
 		for _, item := range sorted {
+			if item.Value < 36 {
+				continue
+			}
 			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
 		}
 	}
 
-	fmt.Printf("\n########## appid: %s, type: video, size: HD, rooms\n", appid)
+	fmt.Printf("\n--------------------------------------------------------------------\n")
+	fmt.Printf("########## appid: %s, type: video, size: HD, rooms\n", appid)
 	for date, rooms := range mapDataRoomsVidHd {
 		fmt.Printf("\n########## data: %s, appid: %s, type: video, size: HD, rooms: %d\n", date, appid, len(rooms))
 		sorted := sortRoom(rooms)
 		for _, item := range sorted {
+			if item.Value < 36 {
+				continue
+			}
 			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
 		}
 	}
 
-	fmt.Printf("\n########## appid: %s, type: video, size: UHD, rooms\n", appid)
+	fmt.Printf("\n--------------------------------------------------------------------\n")
+	fmt.Printf("########## appid: %s, type: video, size: UHD, rooms\n", appid)
 	for date, rooms := range mapDataRoomsVidUhd {
 		fmt.Printf("\n########## data: %s, appid: %s, type: video, size: UHD, rooms: %d\n", date, appid, len(rooms))
 		sorted := sortRoom(rooms)
 		for _, item := range sorted {
+			if item.Value < 36 {
+				continue
+			}
 			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
 		}
 	}
@@ -314,6 +332,9 @@ func getRoomId(s string) string {
 }
 
 func procChargeLog(record *LogRecord) {
+	if record.Fields.Bytes <= 0 {
+		return
+	}
 	if record.Tags.Method != "play" {
 		return
 	}
