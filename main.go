@@ -42,28 +42,33 @@ type LogRecord struct {
 	Ts int64 `json:"ts"` // nanosecond timestamp
 }
 
+type DateDurationsType map[string]int64
+type DateRoomsType map[string]map[string]int64
+
 // 存储每个日期的duration总和
-var mapDateDurations = make(map[string]int64)
+var mapDateDurationsAudio = make(DateDurationsType)
+var mapDataDurationsVidSd = make(DateDurationsType)
+var mapDataDurationsVidHd = make(DateDurationsType)
+var mapDataDurationsVidUhd = make(DateDurationsType)
 
 // 存储每个日期的所有房间ID
-var mapDataRooms = make(map[string]map[string]int64)
+var mapDataRoomsAudio = make(DateRoomsType)
+var mapDataRoomsVidSd = make(DateRoomsType)
+var mapDataRoomsVidHd = make(DateRoomsType)
+var mapDataRoomsVidUhd = make(DateRoomsType)
 
 var year = 2025
 var month = 12
 var day = 27
 var date = "2025-12-27"
 var appid = "icha9jt73"
-var mtype = "video"
-var videoSize = ""
 var roomId = ""
-var minWidth = int64(0)
-var minHeight = int64(0)
 
 func main() {
-	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d audio [roomId]\n")
-	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d video sd [roomId]\n")
-	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d video hd [roomId]\n")
-	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d video uhd [roomId]\n")
+	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d [roomId]\n")
+	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d [roomId]\n")
+	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d [roomId]\n")
+	fmt.Printf("./parse-rtc-charge-log 2025 12 1 30 g1xr9210d [roomId]\n")
 
 	var err error
 
@@ -107,21 +112,8 @@ func main() {
 	}
 
 	appid = os.Args[5]
-	mtype = os.Args[6]
-	if mtype == "video" {
-		videoSize = os.Args[7]
-		if len(os.Args) > 8 {
-			roomId = os.Args[8]
-		}
-	} else if mtype == "audio" {
-		minWidth = int64(0)
-		minHeight = int64(0)
-		if len(os.Args) > 7 {
-			roomId = os.Args[7]
-		}
-	} else {
-		fmt.Printf("invalid mtype: %s\n", mtype)
-		os.Exit(1)
+	if len(os.Args) > 6 {
+		roomId = os.Args[6]
 	}
 
 	// rootDir := "/pili-logs/2025-12-27/json_rtc_charge"
@@ -135,6 +127,56 @@ func main() {
 	}
 
 	showResult()
+}
+
+func getVideoStd(w, h int64) string {
+	sizeMul := w * h
+	if sizeMul <= 640*360 {
+		return "sd"
+	}
+	if sizeMul <= 1280*720 {
+		return "hd"
+	}
+	return "uhd"
+}
+
+func getDateDurationsType(mt string, w, h int64) *DateDurationsType {
+	if mt == "audio" {
+		return &mapDateDurationsAudio
+	}
+
+	if mt == "video" {
+		vs := getVideoStd(w, h)
+		if vs == "sd" {
+			return &mapDataDurationsVidSd
+		}
+		if vs == "hd" {
+			return &mapDataDurationsVidHd
+		}
+		if vs == "uhd" {
+			return &mapDataDurationsVidUhd
+		}
+	}
+	return nil
+}
+
+func getDateRoomsType(mt string, w, h int64) *DateRoomsType {
+	if mt == "audio" {
+		return &mapDataRoomsAudio
+	}
+	if mt == "video" {
+		vs := getVideoStd(w, h)
+		if vs == "sd" {
+			return &mapDataRoomsVidSd
+		}
+		if vs == "hd" {
+			return &mapDataRoomsVidHd
+		}
+		if vs == "uhd" {
+			return &mapDataRoomsVidUhd
+		}
+	}
+	return nil
 }
 
 func procDir(rootDir string) {
@@ -177,10 +219,35 @@ func procDir(rootDir string) {
 }
 
 func showResult() {
-	fmt.Printf("\n########## appid: %s, type:%s, size:%s, durations\n", appid, mtype, videoSize)
-	for date, duration := range mapDateDurations {
+	fmt.Printf("\n########## appid: %s, type: audio, durations\n", appid)
+	totalDuration := int64(0)
+	for date, duration := range mapDateDurationsAudio {
 		fmt.Printf("%s: %ds, %dm, %.2fh\n", date, duration, duration/60, float64(duration)/3600)
+		totalDuration += duration
 	}
+	fmt.Printf("########## total durations: %ds, %dm, %.2fh\n", totalDuration, totalDuration/60, float64(totalDuration)/3600)
+
+	fmt.Printf("\n########## appid: %s, type: video, size: SD, durations\n", appid)
+	totalDuration = 0
+	for date, duration := range mapDataDurationsVidSd {
+		fmt.Printf("%s: %ds, %dm, %.2fh\n", date, duration, duration/60, float64(duration)/3600)
+		totalDuration += duration
+	}
+	fmt.Printf("########## total durations: %ds, %dm, %.2fh\n", totalDuration, totalDuration/60, float64(totalDuration)/3600)
+
+	fmt.Printf("\n########## appid: %s, type: video, size: HD, durations\n", appid)
+	for date, duration := range mapDataDurationsVidHd {
+		fmt.Printf("%s: %ds, %dm, %.2fh\n", date, duration, duration/60, float64(duration)/3600)
+		totalDuration += duration
+	}
+	fmt.Printf("########## total durations: %ds, %dm, %.2fh\n", totalDuration, totalDuration/60, float64(totalDuration)/3600)
+
+	fmt.Printf("\n########## appid: %s, type: video, size: UHD, durations\n", appid)
+	for date, duration := range mapDataDurationsVidUhd {
+		fmt.Printf("%s: %ds, %dm, %.2fh\n", date, duration, duration/60, float64(duration)/3600)
+		totalDuration += duration
+	}
+	fmt.Printf("########## total durations: %ds, %dm, %.2fh\n", totalDuration, totalDuration/60, float64(totalDuration)/3600)
 
 	type kv struct {
 		Key   string
@@ -198,8 +265,36 @@ func showResult() {
 		return sorted
 	}
 
-	for date, rooms := range mapDataRooms {
-		fmt.Printf("\n########## data: %s, appid: %s, type:%s, size:%s, rooms:%d\n", date, appid, mtype, videoSize, len(rooms))
+	fmt.Printf("\n########## appid: %s, type: audio, rooms\n", appid)
+	for date, rooms := range mapDataRoomsAudio {
+		fmt.Printf("\n########## data: %s, appid: %s, type: audio, rooms: %d\n", date, appid, len(rooms))
+		sorted := sortRoom(rooms)
+		for _, item := range sorted {
+			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
+		}
+	}
+
+	fmt.Printf("\n########## appid: %s, type: video, size: SD, rooms\n", appid)
+	for date, rooms := range mapDataRoomsVidSd {
+		fmt.Printf("\n########## data: %s, appid: %s, type: video, size: SD, rooms: %d\n", date, appid, len(rooms))
+		sorted := sortRoom(rooms)
+		for _, item := range sorted {
+			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
+		}
+	}
+
+	fmt.Printf("\n########## appid: %s, type: video, size: HD, rooms\n", appid)
+	for date, rooms := range mapDataRoomsVidHd {
+		fmt.Printf("\n########## data: %s, appid: %s, type: video, size: HD, rooms: %d\n", date, appid, len(rooms))
+		sorted := sortRoom(rooms)
+		for _, item := range sorted {
+			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
+		}
+	}
+
+	fmt.Printf("\n########## appid: %s, type: video, size: UHD, rooms\n", appid)
+	for date, rooms := range mapDataRoomsVidUhd {
+		fmt.Printf("\n########## data: %s, appid: %s, type: video, size: UHD, rooms: %d\n", date, appid, len(rooms))
 		sorted := sortRoom(rooms)
 		for _, item := range sorted {
 			fmt.Printf("%s: room: %s, %.2fh\n", date, item.Key, float64(item.Value)/3600)
@@ -225,32 +320,25 @@ func procChargeLog(record *LogRecord) {
 	if record.Tags.AppId != appid {
 		return
 	}
-	if record.Tags.Type != mtype {
-		return
-	}
-	if mtype == "video" {
-		sizeMul := record.Fields.Width * record.Fields.Height
-		switch videoSize {
-		case "sd":
-			if sizeMul > 640*360 {
-				return
-			}
-		case "hd":
-			if sizeMul > 1280*720 || sizeMul <= 640*360 {
-				return
-			}
-		case "uhd":
-			if sizeMul <= 1280*720 {
-				return
-			}
-		default:
-			fmt.Printf("invalid video size: %s\n", videoSize)
-			os.Exit(1)
-		}
 
-		if record.Fields.Width*record.Fields.Height <= minWidth*minHeight {
+	mtype := record.Tags.Type
+
+	var dateDurations *DateDurationsType
+	var dateRooms *DateRoomsType
+	if mtype == "audio" {
+		dateDurations = getDateDurationsType(mtype, 0, 0)
+		dateRooms = getDateRoomsType(mtype, 0, 0)
+		if dateDurations == nil || dateRooms == nil {
 			return
 		}
+	} else if mtype == "video" {
+		dateDurations = getDateDurationsType(mtype, record.Fields.Width, record.Fields.Height)
+		dateRooms = getDateRoomsType(mtype, record.Fields.Width, record.Fields.Height)
+		if dateDurations == nil || dateRooms == nil {
+			return
+		}
+	} else {
+		return
 	}
 
 	room := getRoomId(record.Tags.RoomId)
@@ -275,21 +363,21 @@ func procChargeLog(record *LogRecord) {
 	dateStr := time.Unix(int64(sec), 0).Local().Format("2006-01-02")
 
 	duration := record.Fields.Duration
-	if v, ok := mapDateDurations[dateStr]; ok {
-		mapDateDurations[dateStr] = v + duration
+	if v, ok := (*dateDurations)[dateStr]; ok {
+		(*dateDurations)[dateStr] = v + duration
 	} else {
-		mapDateDurations[dateStr] = duration
+		(*dateDurations)[dateStr] = duration
 	}
 
-	if v, ok := mapDataRooms[dateStr]; ok {
+	if v, ok := (*dateRooms)[dateStr]; ok {
 		if durations, ok := v[room]; ok {
-			mapDataRooms[dateStr][room] = durations + duration
+			(*dateRooms)[dateStr][room] = durations + duration
 		} else {
-			mapDataRooms[dateStr][room] = duration
+			(*dateRooms)[dateStr][room] = duration
 		}
 	} else {
-		mapDataRooms[dateStr] = make(map[string]int64)
-		mapDataRooms[dateStr][room] = duration
+		(*dateRooms)[dateStr] = make(map[string]int64)
+		(*dateRooms)[dateStr][room] = duration
 	}
 
 	// 打印整个结构体（格式化输出）
